@@ -10,18 +10,17 @@ pipeline {
         // 1. Сборка Docker образа
         stage('Build Docker Image') {
             environment {
-                DOCKERHUB_CREDS = credentials('docker-hub-credentials') // Добавляем эту строку
+                DOCKER_PASS = credentials("DOCKER_HUB_PASS")
             }
             steps {
                 dir('cast-service') {
                     sh '''
-                        docker login -u $DOCKERHUB_CREDS_USR -p $DOCKERHUB_CREDS_PSW
+                        docker login -u $DOCKER_ID -p $DOCKER_PASS
                         docker build -t $DOCKER_ID/$APP_IMAGE:$DOCKER_TAG .
                     '''
                 }
             }
         }
-
         // 2. Пуш образа в Docker Hub
  stage('Push to Docker Hub') {
             environment {
