@@ -1,7 +1,7 @@
 pipeline {
     environment {
         DOCKER_ID = "mkrhov"
-        APP_IMAGE = "cast-service"
+        APP_IMAGE = "jenkins-exam-review"
         DOCKER_TAG = "v.${BUILD_ID}.0"
     }
     agent any
