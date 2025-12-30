@@ -10,7 +10,7 @@ pipeline {
         // 1. Сборка Docker образа
         stage('Build Docker Image') {
             environment {
-                DOCKER_PASS = credentials("DOCKER_HUB_PASS")
+                DOCKER_PASS = credentials("DOCKER_HUB_PASS")  // ИЗМЕНИТЬ ТУТ
             }
             steps {
                 dir('cast-service') {
@@ -20,20 +20,20 @@ pipeline {
                     '''
                 }
             }
-        }
+        }        
         // 2. Пуш образа в Docker Hub
- stage('Push to Docker Hub') {
+        stage('Push to Docker Hub') {
             environment {
-                DOCKERHUB_CREDS = credentials('docker-hub-credentials') // Используем те же credentials
+                DOCKER_PASS = credentials("DOCKER_HUB_PASS")  // ИЗМЕНИТЬ ТУТ
             }
             steps {
                 sh '''
-                    docker login -u $DOCKERHUB_CREDS_USR -p $DOCKERHUB_CREDS_PSW
+                    docker login -u $DOCKER_ID -p $DOCKER_PASS
                     docker push $DOCKER_ID/$APP_IMAGE:$DOCKER_TAG
                 '''
             }
-        }
-        // 3. Деплой в Dev
+        }        
+// 3. Деплой в Dev
         stage('Deploy to dev') {
             environment {
                 KUBECONFIG = credentials("config")
