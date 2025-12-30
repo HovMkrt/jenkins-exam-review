@@ -1,3 +1,10 @@
+// Jenkins Declarative Pipeline for Docker build/push + Helm deploy to multiple namespaces
+// Notes:
+// - Uses Docker Hub password stored as Jenkins credential "DOCKER_HUB_PASS" (Secret text)
+// - Uses Kubernetes kubeconfig stored as Jenkins credential "config" (Secret file)
+// - Uses withCredentials(file(...)) to ensure KUBECONFIG points to a real kubeconfig file
+// - Adds a quick connectivity check before each Helm deployment
+
 pipeline {
     agent any
 
@@ -43,19 +50,30 @@ pipeline {
         }
 
         stage('Deploy to dev') {
-            environment {
-                KUBECONFIG_CRED = credentials("config")
-            }
             steps {
-                script {
-                    sh '''
-                        set -e
-                        rm -rf .kube
-                        mkdir -p .kube
-                        cat "$KUBECONFIG_CRED" > .kube/config
-                    '''
+                withCredentials([file(credentialsId: 'config', variable: 'KUBECONFIG')]) {
+                    script {
+                        // Quick cluster connectivity and context validation
+                        sh '''
+                            set -e
+                            echo "=== Kubeconfig file path ==="
+                            ls -la "$KUBECONFIG"
 
-                    writeFile file: 'cast-values-dev.yml', text: """
+                            echo "=== Contexts ==="
+                            kubectl config get-contexts
+
+                            echo "=== Current context ==="
+                            kubectl config current-context
+
+                            echo "=== Cluster info ==="
+                            kubectl cluster-info
+
+                            echo "=== Namespaces ==="
+                            kubectl get ns
+                        '''
+
+                        // Write Helm values for dev
+                        writeFile file: 'cast-values-dev.yml', text: """
 replicaCount: 1
 image:
   repository: ${DOCKER_ID}/${REPO_NAME}
@@ -68,8 +86,7 @@ service:
   port: 80
   targetPort: 8000
 """
-
-                    writeFile file: 'movie-values-dev.yml', text: """
+                        writeFile file: 'movie-values-dev.yml', text: """
 replicaCount: 1
 image:
   repository: ${DOCKER_ID}/${REPO_NAME}
@@ -83,26 +100,31 @@ service:
   targetPort: 8001
 """
 
-                    sh 'helm upgrade --install cast-app charts/ -f cast-values-dev.yml -n dev --create-namespace'
-                    sh 'helm upgrade --install movie-app charts/ -f movie-values-dev.yml -n dev --create-namespace'
+                        // Deploy with Helm into namespace dev
+                        sh 'helm upgrade --install cast-app charts/ -f cast-values-dev.yml -n dev --create-namespace'
+                        sh 'helm upgrade --install movie-app charts/ -f movie-values-dev.yml -n dev --create-namespace'
+                    }
                 }
             }
         }
 
         stage('Deploy to qa') {
-            environment {
-                KUBECONFIG_CRED = credentials("config")
-            }
             steps {
-                script {
-                    sh '''
-                        set -e
-                        rm -rf .kube
-                        mkdir -p .kube
-                        cat "$KUBECONFIG_CRED" > .kube/config
-                    '''
+                withCredentials([file(credentialsId: 'config', variable: 'KUBECONFIG')]) {
+                    script {
+                        // Quick cluster connectivity and context validation
+                        sh '''
+                            set -e
+                            echo "=== Contexts ==="
+                            kubectl config get-contexts
+                            echo "=== Current context ==="
+                            kubectl config current-context
+                            echo "=== Cluster info ==="
+                            kubectl cluster-info
+                        '''
 
-                    writeFile file: 'cast-values-qa.yml', text: """
+                        // Write Helm values for qa
+                        writeFile file: 'cast-values-qa.yml', text: """
 replicaCount: 1
 image:
   repository: ${DOCKER_ID}/${REPO_NAME}
@@ -115,8 +137,7 @@ service:
   port: 80
   targetPort: 8000
 """
-
-                    writeFile file: 'movie-values-qa.yml', text: """
+                        writeFile file: 'movie-values-qa.yml', text: """
 replicaCount: 1
 image:
   repository: ${DOCKER_ID}/${REPO_NAME}
@@ -130,26 +151,31 @@ service:
   targetPort: 8001
 """
 
-                    sh 'helm upgrade --install cast-app charts/ -f cast-values-qa.yml -n qa --create-namespace'
-                    sh 'helm upgrade --install movie-app charts/ -f movie-values-qa.yml -n qa --create-namespace'
+                        // Deploy with Helm into namespace qa
+                        sh 'helm upgrade --install cast-app charts/ -f cast-values-qa.yml -n qa --create-namespace'
+                        sh 'helm upgrade --install movie-app charts/ -f movie-values-qa.yml -n qa --create-namespace'
+                    }
                 }
             }
         }
 
         stage('Deploy to staging') {
-            environment {
-                KUBECONFIG_CRED = credentials("config")
-            }
             steps {
-                script {
-                    sh '''
-                        set -e
-                        rm -rf .kube
-                        mkdir -p .kube
-                        cat "$KUBECONFIG_CRED" > .kube/config
-                    '''
+                withCredentials([file(credentialsId: 'config', variable: 'KUBECONFIG')]) {
+                    script {
+                        // Quick cluster connectivity and context validation
+                        sh '''
+                            set -e
+                            echo "=== Contexts ==="
+                            kubectl config get-contexts
+                            echo "=== Current context ==="
+                            kubectl config current-context
+                            echo "=== Cluster info ==="
+                            kubectl cluster-info
+                        '''
 
-                    writeFile file: 'cast-values-staging.yml', text: """
+                        // Write Helm values for staging
+                        writeFile file: 'cast-values-staging.yml', text: """
 replicaCount: 1
 image:
   repository: ${DOCKER_ID}/${REPO_NAME}
@@ -162,8 +188,7 @@ service:
   port: 80
   targetPort: 8000
 """
-
-                    writeFile file: 'movie-values-staging.yml', text: """
+                        writeFile file: 'movie-values-staging.yml', text: """
 replicaCount: 1
 image:
   repository: ${DOCKER_ID}/${REPO_NAME}
@@ -177,30 +202,36 @@ service:
   targetPort: 8001
 """
 
-                    sh 'helm upgrade --install cast-app charts/ -f cast-values-staging.yml -n staging --create-namespace'
-                    sh 'helm upgrade --install movie-app charts/ -f movie-values-staging.yml -n staging --create-namespace'
+                        // Deploy with Helm into namespace staging
+                        sh 'helm upgrade --install cast-app charts/ -f cast-values-staging.yml -n staging --create-namespace'
+                        sh 'helm upgrade --install movie-app charts/ -f movie-values-staging.yml -n staging --create-namespace'
+                    }
                 }
             }
         }
 
         stage('Deploy to prod') {
-            environment {
-                KUBECONFIG_CRED = credentials("config")
-            }
             steps {
+                // Manual approval gate before production deployment
                 timeout(time: 15, unit: 'MINUTES') {
-                    input(message: 'Разрешить деплой в PRODUCTION?', ok: 'Да')
+                    input(message: 'Allow deployment to PRODUCTION?', ok: 'Deploy')
                 }
 
-                script {
-                    sh '''
-                        set -e
-                        rm -rf .kube
-                        mkdir -p .kube
-                        cat "$KUBECONFIG_CRED" > .kube/config
-                    '''
+                withCredentials([file(credentialsId: 'config', variable: 'KUBECONFIG')]) {
+                    script {
+                        // Quick cluster connectivity and context validation
+                        sh '''
+                            set -e
+                            echo "=== Contexts ==="
+                            kubectl config get-contexts
+                            echo "=== Current context ==="
+                            kubectl config current-context
+                            echo "=== Cluster info ==="
+                            kubectl cluster-info
+                        '''
 
-                    writeFile file: 'cast-values-prod.yml', text: """
+                        // Write Helm values for prod
+                        writeFile file: 'cast-values-prod.yml', text: """
 replicaCount: 2
 image:
   repository: ${DOCKER_ID}/${REPO_NAME}
@@ -213,8 +244,7 @@ service:
   port: 80
   targetPort: 8000
 """
-
-                    writeFile file: 'movie-values-prod.yml', text: """
+                        writeFile file: 'movie-values-prod.yml', text: """
 replicaCount: 2
 image:
   repository: ${DOCKER_ID}/${REPO_NAME}
@@ -228,8 +258,10 @@ service:
   targetPort: 8001
 """
 
-                    sh 'helm upgrade --install cast-app charts/ -f cast-values-prod.yml -n prod --create-namespace'
-                    sh 'helm upgrade --install movie-app charts/ -f movie-values-prod.yml -n prod --create-namespace'
+                        // Deploy with Helm into namespace prod
+                        sh 'helm upgrade --install cast-app charts/ -f cast-values-prod.yml -n prod --create-namespace'
+                        sh 'helm upgrade --install movie-app charts/ -f movie-values-prod.yml -n prod --create-namespace'
+                    }
                 }
             }
         }
@@ -237,13 +269,14 @@ service:
 
     post {
         success {
-            echo 'ЭКЗАМЕН СДАН!'
+            echo 'EXAM PASSED!'
         }
         failure {
-            echo 'Ошибка!'
+            echo 'Pipeline failed!'
         }
         always {
-            sh 'rm -rf .kube cast-values-*.yml movie-values-*.yml || true'
+            // Cleanup generated files in the workspace
+            sh 'rm -f cast-values-*.yml movie-values-*.yml || true'
         }
     }
 }
