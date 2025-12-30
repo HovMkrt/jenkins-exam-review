@@ -97,7 +97,7 @@ imagePullSecrets:
 service:
   type: ClusterIP
   port: 80
-  targetPort: 8001
+  targetPort: 8000
 """
 
                         // Deploy with Helm into namespace dev
@@ -148,7 +148,7 @@ imagePullSecrets:
 service:
   type: ClusterIP
   port: 80
-  targetPort: 8001
+  targetPort: 8000
 """
 
                         // Deploy with Helm into namespace qa
@@ -199,7 +199,7 @@ imagePullSecrets:
 service:
   type: ClusterIP
   port: 80
-  targetPort: 8001
+  targetPort: 8000
 """
 
                         // Deploy with Helm into namespace staging
@@ -255,7 +255,7 @@ imagePullSecrets:
 service:
   type: ClusterIP
   port: 80
-  targetPort: 8001
+  targetPort: 8000
 """
 
                         // Deploy with Helm into namespace prod
